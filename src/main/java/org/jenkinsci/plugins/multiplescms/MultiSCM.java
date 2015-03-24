@@ -1,4 +1,5 @@
 package org.jenkinsci.plugins.multiplescms;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.Launcher;
@@ -28,6 +29,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import jenkins.scm.api.SCMHead;
+import jenkins.scm.api.SCMHeadObserver;
+import jenkins.scm.api.SCMRevision;
+import jenkins.scm.api.SCMSource;
 import net.sf.json.JSONObject;
 
 import org.apache.commons.io.FileUtils;
@@ -36,22 +41,21 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.export.Exported;
 
-public class MultiSCM extends SCM implements Saveable {
+public class MultiSCM extends SCMSource implements Saveable {
 
     private DescribableList<SCM,Descriptor<SCM>> scms =
         new DescribableList<SCM,Descriptor<SCM>>(this);
-    
-	@DataBoundConstructor
-    public MultiSCM(List<SCM> scmList) throws IOException {
-		scms.addAll(scmList);
+
+    public MultiSCM(String id, DescribableList<SCM, Descriptor<SCM>> scms) {
+        super(id);
+        this.scms = scms;
     }
-	
+
 	@Exported
 	public List<SCM> getConfiguredSCMs() {
 		return scms.toList();
 	}
 	
-    @Override
 	public SCMRevisionState calcRevisionsFromBuild(AbstractBuild<?, ?> build,
 			Launcher launcher, TaskListener listener) throws IOException,
 			InterruptedException {
@@ -66,7 +70,6 @@ public class MultiSCM extends SCM implements Saveable {
 		return revisionStates;
 	}
 
-    @Override
     public void buildEnvVars(AbstractBuild<?,?> build, Map<String, String> env) {
     	for(SCM scm : scms) {
     		try {
@@ -77,7 +80,6 @@ public class MultiSCM extends SCM implements Saveable {
     	}
     }
     
-	@Override
 	protected PollingResult compareRemoteRevisionWith(
 			AbstractProject<?, ?> project, Launcher launcher,
 			FilePath workspace, TaskListener listener, SCMRevisionState baseline)
@@ -98,7 +100,6 @@ public class MultiSCM extends SCM implements Saveable {
 		return new PollingResult(baselineStates, currentStates, overallChange);
 	}
 	
-	@Override
 	public void checkout(Run<?, ?> build, Launcher launcher,
 			FilePath workspace, TaskListener listener, File changelogFile, SCMRevisionState baseline)
 			throws IOException, InterruptedException {
@@ -144,7 +145,6 @@ public class MultiSCM extends SCM implements Saveable {
 		logWriter.close();
 	}
 
-	@Override
 	public FilePath[] getModuleRoots(FilePath workspace, AbstractBuild build) {
 		ArrayList<FilePath> paths = new ArrayList<FilePath>();
 		for(SCM scm : scms) {
@@ -155,7 +155,6 @@ public class MultiSCM extends SCM implements Saveable {
 		return paths.toArray(new FilePath[paths.size()]);
 	}
 	
-	@Override
 	public ChangeLogParser createChangeLogParser() {
 		return new MultiSCMChangeLogParser(scms.toList());
 	}
@@ -207,5 +206,17 @@ public class MultiSCM extends SCM implements Saveable {
 		}
 	    
 	}
+
+    @NonNull
+    @Override
+    protected void retrieve(SCMHeadObserver scmHeadObserver, TaskListener taskListener) throws IOException, InterruptedException {
+
+    }
+
+    @NonNull
+    @Override
+    public SCM build(SCMHead scmHead, SCMRevision scmRevision) {
+        return null;
+    }
 }
 
